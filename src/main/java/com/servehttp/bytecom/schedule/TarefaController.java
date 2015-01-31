@@ -26,25 +26,35 @@ public class TarefaController {
   public void backup() {
     LOGGER.info("[EFETUANDO BACKUP]");
 
-    executar("/opt/script/./backup.sh");
-    
-    LOGGER.info("[BACKUP FINALIZADO]");
-    try {
-      Thread.sleep(1000 * 60 * 10);
-    } catch (InterruptedException e) {
-      LOGGER.log(Level.SEVERE, null, e);
+    if (executar("/opt/script/./backup.sh")) {
+      LOGGER.info("[ENVIANDO BACKUP]");
+      enviarBackupPorEmail();
+      LOGGER.info("[BACKUP ENVIADO]");
+    } else {
+      LOGGER.severe("[FALHA AO TENTAR FAZER O BACKUP]");
     }
-    LOGGER.info("[ENVIANDO BACKUP]");
-    enviarBackupPorEmail();
-    LOGGER.info("[BACKUP ENVIADO]");
+
+    LOGGER.info("[BACKUP FINALIZADO]");
   }
 
-  private void executar(String command) {
+  private boolean executar(String command) {
+    boolean sucesso = false;
     try {
-      Runtime.getRuntime().exec(command);
+      Process processRuntime = Runtime.getRuntime().exec(command);
+      int waitFor = processRuntime.waitFor();
+      sucesso = waitFor == 0;
     } catch (IOException e) {
       LOGGER.log(Level.SEVERE, null, e);
+      sendEmailFalha(e);
+    } catch (InterruptedException e) {
+      LOGGER.log(Level.SEVERE, null, e);
+      sendEmailFalha(e);
     }
+    return sucesso;
+  }
+
+  private void sendEmailFalha(Exception e) {
+    mail.send(DESTINATARIO, "FALHA AO TENTAR EFETUAR O BACKUP", e.toString());
   }
 
   private void enviarBackupPorEmail() {
